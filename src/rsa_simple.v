@@ -5,16 +5,16 @@
 `default_nettype none
 
 module rsa_simple (
-    input  wire        clk,
-    input  wire        rst,
-    input  wire        start,
-    input  wire [15:0] message,
-    output wire [31:0] encrypted,
-    output wire        done
+        input  wire         clk,
+        input  wire         rst,
+        input  wire         start,
+    input  wire [15:0]  message,
+    output wire [15:0]  encrypted,
+        output wire         done
 );
 
     parameter [15:0] e = 16'd193;
-    parameter [31:0] n = 32'd4439;
+    parameter [15:0] n = 16'd4439;
 
     modexp enc (
         .clk      (clk),
