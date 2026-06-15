@@ -1,27 +1,50 @@
-/*
- * Copyright (c) 2024 Your Name
- * SPDX-License-Identifier: Apache-2.0
- */
-
 `default_nettype none
 
-module tt_um_example (
-    input  wire [7:0] ui_in,    // Dedicated inputs
-    output wire [7:0] uo_out,   // Dedicated outputs
-    input  wire [7:0] uio_in,   // IOs: Input path
-    output wire [7:0] uio_out,  // IOs: Output path
-    output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
-    input  wire       ena,      // always 1 when the design is powered, so you can ignore it
-    input  wire       clk,      // clock
-    input  wire       rst_n     // reset_n - low to reset
+// tt_um_rsa_simple — TinyTapeout top module
+//
+// Pinout:
+//   ui_in[0]      : start  (pulse high for 1 cycle to begin encryption)
+//   ui_in[7:1]    : message[6:0]  (low 7 bits of 15-bit message)
+//   uio_in[7:0]   : message[14:7] (next 8 bits of 15-bit message)
+//
+//   uo_out[7:0]   : encrypted[7:0]   (low byte of ciphertext, valid when done=1)
+//   uio_out[6:0]  : encrypted[14:8]  (bits [14:8] of ciphertext)
+//   uio_out[7]    : done             (pulses high for 1 cycle when result is ready)
+
+module tt_um_rsa_simple (
+    input  wire [7:0] ui_in,
+    output wire [7:0] uo_out,
+    input  wire [7:0] uio_in,
+    output wire [7:0] uio_out,
+    output wire [7:0] uio_oe,
+    input  wire       ena,
+    input  wire       clk,
+    input  wire       rst_n
 );
 
-  // All output pins must be assigned. If not used, assign to 0.
-  assign uo_out  = ui_in + uio_in;  // Example: ou_out is the sum of ui_in and uio_in
-  assign uio_out = 0;
-  assign uio_oe  = 0;
+    wire rst = ~rst_n;
 
-  // List all unused inputs to prevent warnings
-  wire _unused = &{ena, clk, rst_n, 1'b0};
+    wire        start   = ui_in[0];
+    wire [15:0] message = {1'b0, uio_in[7:0], ui_in[7:1]};
+
+    wire [31:0] encrypted;
+    wire        done;
+
+    rsa_simple core (
+        .clk       (clk),
+        .rst       (rst),
+        .start     (start),
+        .message   (message),
+        .encrypted (encrypted),
+        .done      (done)
+    );
+
+    assign uo_out  = encrypted[7:0];
+    assign uio_out = {done, encrypted[14:8]};
+    assign uio_oe  = 8'hFF;
+
+    wire _unused = &{ena, encrypted[31:15], 1'b0};
 
 endmodule
+
+`default_nettype wire
